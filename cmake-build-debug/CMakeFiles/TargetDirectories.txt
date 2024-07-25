@@ -1,0 +1,3 @@
+C:/Users/ASUS/Desktop/Learning Ray Tracing/Chapter 1/cmake-build-debug/CMakeFiles/Chapter_1.dir
+C:/Users/ASUS/Desktop/Learning Ray Tracing/Chapter 1/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/ASUS/Desktop/Learning Ray Tracing/Chapter 1/cmake-build-debug/CMakeFiles/rebuild_cache.dir
