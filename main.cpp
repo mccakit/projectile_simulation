@@ -3,7 +3,9 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <ranges>
 
+/*A naming alias for std::vector is used to avoid confusing an array with a vector*/
 namespace m_std
 {
     template<typename T>
@@ -13,129 +15,142 @@ namespace m_std
 constexpr int imageSize{256};
 double canvasScale{1.0};
 
+/*This vector class can be of any size, +,* operators are overloaded to make vectors operations simpler to write.
+() operator is overloaded so it can provide access to private elements of the vector.*/
 class Vector
 {
 public:
-    Vector(const std::initializer_list<double> &data):
-        m_data{data}
+    Vector(const std::initializer_list<double>& data):
+        m_elements{data}
     {
     }
 
-    friend std::ostream &operator <<(std::ostream &out, const Vector &vector)
+    friend std::ostream& operator <<(std::ostream& out, const Vector& vector)
     {
-        for (int i{0}; i < static_cast<int>(vector.m_data.size()); ++i)
+        for (int i{0}; i < static_cast<int>(vector.m_elements.size()); ++i)
         {
-            out << vector.m_data[i] << " ";
+            out << vector.m_elements[i] << " ";
         }
         return out;
     }
 
 
-    double &operator ()(const int index)
+    double& operator ()(const int index)
     {
-        return m_data[index];
+        return m_elements[index];
     }
 
-    friend Vector operator *(const Vector& vector, const double& factor)
+    friend Vector operator *(const Vector& ls_vector, const double& rs_factor)
     {
-        Vector result = vector;
-        for (int i{0}; i < static_cast<int>(vector.m_data.size()); ++i)
+        Vector result = ls_vector;
+        for (int i{0}; i < std::ssize(ls_vector.m_elements); ++i)
         {
-            result.m_data[i] = result.m_data[i] * factor;
-        }
-        return result;
-    }
-
-    friend Vector operator *(const double& factor, const Vector &vector)
-    {
-        Vector result = vector;
-        for (int i{0}; i < static_cast<int>(vector.m_data.size()); ++i)
-        {
-            result(i) = result(i) * factor;
+            result.m_elements[i] = result.m_elements[i] * rs_factor;
         }
         return result;
     }
 
-    friend Vector operator +(const Vector &vector1, const Vector &vector2)
+    friend Vector operator *(const double& ls_factor, const Vector& rs_vector)
     {
-        Vector result = vector1;
-        for (int i{0}; i < static_cast<int>(vector1.m_data.size()); ++i)
+        Vector result = rs_vector;
+        for (int i{0}; i < std::ssize(rs_vector.m_elements); ++i)
         {
-            result.m_data[i] = vector1.m_data[i] + vector2.m_data[i];
+            result(i) = result(i) * ls_factor;
         }
         return result;
     }
-    friend m_std::dynArray<double> operator +(const m_std::dynArray<double> &arr, const Vector& vector)
+
+    friend Vector operator +(const Vector& ls_vector, const Vector& rs_vector)
     {
-        m_std::dynArray<double> result = arr;
-        for (int i{0}; i < static_cast<int>(arr.size()); ++i)
+        Vector result = ls_vector;
+        for (int i{0}; i < std::ssize(ls_vector.m_elements); ++i)
         {
-            result[i] = arr[i] + vector.m_data[i];
+            result.m_elements[i] = ls_vector.m_elements[i] + rs_vector.m_elements[i];
         }
         return result;
     }
-    friend m_std::dynArray<double> operator +(const Vector& vector,const m_std::dynArray<double> &arr)
+
+    friend m_std::dynArray<double> operator +(const m_std::dynArray<double>& ls_arr, const Vector& rs_vector)
     {
-        m_std::dynArray<double> result = arr;
-        for (int i{0}; i < static_cast<int>(arr.size()); ++i)
+        m_std::dynArray<double> result = ls_arr;
+        for (int i{0}; i < std::ssize(ls_arr); ++i)
         {
-            result[i] = arr[i] + vector.m_data[i];
+            result[i] = ls_arr[i] + rs_vector.m_elements[i];
+        }
+        return result;
+    }
+
+    friend m_std::dynArray<double> operator +(const Vector& ls_vector, const m_std::dynArray<double>& rs_arr)
+    {
+        m_std::dynArray<double> result = rs_arr;
+        for (int i{0}; i < std::ssize(rs_arr); ++i)
+        {
+            result[i] = rs_arr[i] + ls_vector.m_elements[i];
         }
         return result;
     }
 
 private:
-    m_std::dynArray<double> m_data{};
+    m_std::dynArray<double> m_elements{};
 };
 
-Vector fallDistance(const Vector &gravity, const double time)
+Vector gravityDisplacement(const Vector& gravity, const double elapsedTime)
 {
-    return gravity * (std::pow(time, 2) / 2);
+    return gravity * (std::pow(elapsedTime, 2) / 2);
 }
-bool compareCoordinates(const m_std::dynArray<double>& arr1, const m_std::dynArray<double>& arr2)
+
+bool isMaxElementSmaller(const m_std::dynArray<double>& arr1, const m_std::dynArray<double>& arr2)
 {
     return *std::ranges::max_element(arr1) < *std::ranges::max_element(arr2);
 }
-const m_std::dynArray<double> startingPosition{10,50};
+
+/*Simulation settings*/
+const m_std::dynArray<double> startingPosition{10, 50};
 const Vector gravity = {0, -9.8};
 const Vector projectileVelocity = {40, 80};
 constexpr double timeStep{0.001};
+
 int main()
 {
-    m_std::dynArray<m_std::dynArray<double>> coordinates{startingPosition};
-    m_std::dynArray<m_std::dynArray<int>> canvasCoordinates{};
-    Vector current_velocity = {};
+    m_std::dynArray<m_std::dynArray<double> > gridCoordinates{startingPosition};
+    m_std::dynArray<m_std::dynArray<int> > canvasCoordinates{};
+    Vector currentVelocity = {};
     double currentTime{0.0};
+    /*Calculates location based on velocity at a given time and saves it an dynamic array*/
     while (true)
     {
-        current_velocity = std::move(projectileVelocity + fallDistance(gravity, currentTime));
-        coordinates.push_back(coordinates.back() + current_velocity * timeStep);
-        if (coordinates.back()[1] <= 0)
+        currentVelocity = std::move(projectileVelocity + gravityDisplacement(gravity, currentTime));
+        gridCoordinates.push_back(gridCoordinates.back() + currentVelocity * timeStep);
+        if (gridCoordinates.back()[1] <= 0)
         {
-            coordinates.pop_back();
+            gridCoordinates.pop_back();
             break;
         }
         currentTime += timeStep;
     }
 
-    auto maxCoordinate = std::ranges::max_element(coordinates,compareCoordinates);
-    auto maxVal = std::ranges::max_element(*maxCoordinate);
+    /* Scales coordinates based on maximum value to fit within image bounds */
+    auto maxCoordinate = std::ranges::max_element(gridCoordinates, isMaxElementSmaller);
+    auto maxCoordinateValue = std::ranges::max_element(*maxCoordinate);
 
     while (true)
     {
-        if(*maxVal < imageSize*canvasScale)
+        if (*maxCoordinateValue < imageSize * canvasScale)
         {
             break;
         }
         canvasScale += 0.1;
     }
-
-    for (auto coordinate: coordinates)
+    /*Converts grid coordinates into canvas coordinates*/
+    for (auto& coordinate: gridCoordinates)
     {
-        canvasCoordinates.push_back({static_cast<int>(coordinate[0]/canvasScale), static_cast<int>(coordinate[1]/canvasScale)});
+        canvasCoordinates.push_back({
+            static_cast<int>(coordinate[0] / canvasScale), static_cast<int>(coordinate[1] / canvasScale)
+        });
     }
 
     std::fstream file{};
+    /*Creates a white square ppm image*/
     file.open("canvas.ppm", std::ios::out);
     file << "P3\n" << imageSize << " " << imageSize << "\n255\n";
     for (int row{0}; row < imageSize; ++row)
@@ -145,7 +160,7 @@ int main()
             file << 255 << " " << 255 << " " << 255 << "\n";
         }
     }
-
+    /*Saves the image into dynamic arrays to ease modification*/
     m_std::dynArray<m_std::dynArray<std::string> > imageData(imageSize, std::vector<std::string>(imageSize));
     m_std::dynArray<std::string> imageHeader(3);
     std::string line{};
@@ -166,22 +181,23 @@ int main()
         }
     }
     file.close();
-
-    for (auto &coordinate: canvasCoordinates)
+    /*Sets the color of each canvas coordinate to blue*/
+    for (auto& coordinate: canvasCoordinates)
     {
         imageData[imageSize - 1 - coordinate[1]][coordinate[0]] = "0 0 255";
     }
-
+    /*Saves the image data into a ppm image*/
     file.open("canvas.ppm", std::ios::out);
-    for (auto &headerArgument: imageHeader)
+    for (auto& headerArgument: imageHeader)
     {
         file << headerArgument << "\n";
     }
-    for (auto &row: imageData)
+    for (auto& row: imageData)
     {
-        for (auto &pixel: row)
+        for (auto& pixel: row)
         {
             file << pixel << "\n";
         }
     }
+    return 0;
 }
